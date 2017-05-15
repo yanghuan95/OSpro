@@ -10,171 +10,44 @@
 #include<unistd.h>
 #include<string.h>
 #include<fcntl.h>
+#include<sys/wait.h>
 
-static int in_temp;
-static int out_temp;
-
-void deal(char *);
-void dealWriteSingle(char *, int *fd);
-void dealReadSingle(char *, int *fd);
 void dealString(char *);
-int hasPattern(char *, char);
 
-int main(int argc, char *argv[]){
-	if(argc > 1){
-		execvp(argv[1], &argv[1]);
-	}else{
-		dup2(0, in_temp);
-		dup2(1, out_temp);
-		while(1){
-			printf("sh3:");
-			dup2(in_temp, 0);
-			dup2(out_temp, 1);
-			char user_input[100];
-			memset(user_input, 0, sizeof(user_input));
-			fgets(user_input, sizeof(user_input), stdin);
-			deal(user_input);
-			fflush(stdin);
-			fflush(stdout);
-		}
+int main(){
+	while(1){
+		printf("sh3:");
+		char user_input[100] = {0};
+		fgets(user_input, sizeof(user_input), stdin);
+		user_input[strlen(user_input) - 1] = 0;
+		dealString(user_input);
 	}
-}	
+	return 0;
+}
 
-void deal(char *user_input){
-	
-	char array[20][100];
-	int len = 0;
-
-	char *temp = strtok(user_input, "|");
-	int index = 0;
-	for(; index < strlen(temp); ++index){
-		if(temp[index] != ' ')
-			break;
-	}
-	strncpy(array[len++], &temp[index], strlen(temp));
-	while((temp = strtok(NULL, "|")) != NULL){
-		for(index = 0; index < strlen(temp); ++index){
-			if(temp[index] != ' ')
-				break;
-		}
-		strncpy(array[len++], &temp[index], strlen(temp));
-	}
-	
+void dealString(char *input){
+	char * params[100];
+	char *temp;
+	char get[100];
+	strcpy(get, input);
 	int i = 0;
-	while(i < len - 1){
-		int fd[2];
-		pipe(fd);
-
-		int pid;
-		if((pid = fork()) < 0){
-			perror("error in fork");
-		}
-
-		if(pid == 0){
-			dealWriteSingle(array[i], fd);
-			exit(0);
-		}
-		dealReadSingle(array[i+1], fd);
-		i+=2;
+	int j = 0;
+		
+	for(; j < 20; ++j){
+		params[j] = (char *) malloc(sizeof(char) * 100);
 	}
 
-}
-
-void dealWriteSingle(char *input, int *fd){
-	char temp[20][100];
-	int len;
-	int index;
-	if((index = hasPattern(input, '<')) != -1){
-		for(; index < strlen(input); ++index){
-			if(input[index] != ' ')
-				break;
-		}
-		char *file_name = &input[index];
-		fd[0] = open(file_name, O_WRONLY|O_CREAT);
-
-		dup2(fd[1], 1);
-		close(fd[0]);
-		close(fd[1]);
-	}else if((index = hasPattern(input, '>')) != -1){
-		for(; index < strlen(input); ++index){
-			if(input[index] != ' ')
-				break;
-		}
-		char *file_name = &input[index];
-		fd[1] = open(file_name, O_WRONLY|O_CREAT);
-
-		dup2(fd[1], 1);
-		close(fd[0]);
-		close(fd[1]);
-	}else{
-		dup2(fd[1], 1);
-		close(fd[0]);
-		close(fd[1]);
-		dealString(input);
-	}
-
-}
-
-void dealReadSingle(char *input, int *fd){
-	int index;
-	if((index = hasPattern(input, '<')) != -1){
-		for(; index < strlen(input); ++index){
-			if(input[index] != ' ')
-				break;
-		}
-		char *file_name = &input[index];
-		fd[0] = open(file_name, O_RDONLY|O_CREAT);
-
-		dup2(fd[0], 0);
-		close(fd[0]);
-		close(fd[1]);
-	}else if((index = hasPattern(input, '>')) != -1){
-		for(; index < strlen(input); ++index){
-			if(input[index] != ' ')
-				break;
-		}
-		char *file_name = &input[index];
-		fd[1] = open(file_name, O_RDONLY|O_CREAT);
-
-		dup2(fd[0], 0);
-		close(fd[0]);
-		close(fd[1]);
-	}else{
-		dup2(fd[0], 0);
-		close(fd[0]);
-		close(fd[1]);
-		dealString(input);
-	}
-
-}
-
-void dealString(char *str){
-	char *temp[100];
-	int len = 0;
-	temp[len] = (char *)malloc(100 * sizeof(char));
-	char *mp = strtok(str, " ");
-	if(mp != NULL){
-		strncpy(temp[len++], mp, strlen(mp));
-		temp[len] = (char *)malloc(100 * sizeof(char));
-	}
-	while((mp = strtok(NULL, " ")) != NULL){
-		strncpy(temp[len++], mp, strlen(mp));
-		temp[len] = (char *)malloc(100 * sizeof(char));
-	}
-
-	temp[len++] = NULL;
-
-	execvp(temp[0], temp);
-}
-
-int hasPattern(char *str, char pattern){
-	int i = 0;
-	int index = -1;
-	for(; i < strlen(str); ++i){
-		if(str[i] == pattern){
-			index = i;
-			break;
+	temp = strtok(get, " ");
+	strcpy(params[i++], temp);
+	if(strcmp(temp, input) != 0){
+		while((temp = strtok(NULL, " ")) != NULL){
+			strcpy(params[i++], temp);
 		}
 	}
-	return index;
+
+	params[i] = NULL;
+	int error = execvp(params[0], params);
+	if(error < 0){
+		perror("bad express");
+	}
 }
