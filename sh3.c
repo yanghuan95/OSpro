@@ -2,11 +2,7 @@
     > File Name: sh3.c
     > Author: yh
     > Mail: yanghuancoder@163.com 
-<<<<<<< HEAD
     > Created Time: Sun 07 May 2017 06:28:55 PM CST
-=======
-    > Created Time: Mon 15 May 2017 05:02:13 AM CST
->>>>>>> aea0c57b38e1f2ff06b53c08e849e7464a33f166
  ************************************************************************/
 
 #include<stdio.h>
@@ -38,7 +34,6 @@ int main(int argc, char *argv[]){
 			memset(user_input, 0, sizeof(user_input));
 			fgets(user_input, sizeof(user_input), stdin);
 			deal(user_input);
-			wait(NULL);
 			fflush(stdin);
 			fflush(stdout);
 		}
@@ -66,7 +61,7 @@ void deal(char *user_input){
 	}
 	
 	int i = 0;
-	while(i < len){
+	while(i < len - 1){
 		int fd[2];
 		pipe(fd);
 
@@ -76,9 +71,11 @@ void deal(char *user_input){
 		}
 
 		if(pid == 0){
-			dealWriteSingle(array[i++], fd);
+			dealWriteSingle(array[i], fd);
+			exit(0);
 		}
-		dealReadSingle(array[i++], fd);
+		dealReadSingle(array[i+1], fd);
+		i+=2;
 	}
 
 }
@@ -104,12 +101,15 @@ void dealWriteSingle(char *input, int *fd){
 				break;
 		}
 		char *file_name = &input[index];
-		fd[1] = open(file_name, O_wRONLY|O_CREAT);
+		fd[1] = open(file_name, O_WRONLY|O_CREAT);
 
 		dup2(fd[1], 1);
 		close(fd[0]);
 		close(fd[1]);
 	}else{
+		dup2(fd[1], 1);
+		close(fd[0]);
+		close(fd[1]);
 		dealString(input);
 	}
 
@@ -140,6 +140,9 @@ void dealReadSingle(char *input, int *fd){
 		close(fd[0]);
 		close(fd[1]);
 	}else{
+		dup2(fd[0], 0);
+		close(fd[0]);
+		close(fd[1]);
 		dealString(input);
 	}
 
@@ -159,9 +162,8 @@ void dealString(char *str){
 		temp[len] = (char *)malloc(100 * sizeof(char));
 	}
 
-	temp[len++] = (char *)malloc(100 * sizeof(char));
 	temp[len++] = NULL;
-	
+
 	execvp(temp[0], temp);
 }
 
